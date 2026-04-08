@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html lang="en" class="antialiased">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CloudVaultX</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'media',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#ecfdf5',
+                            100: '#d1fae5',
+                            500: '#10b981',
+                            600: '#059669',
+                            700: '#047857',
+                        }
+                    },
+                    animation: {
+                        'spin-slow': 'spin 1.5s linear infinite',
+                        'slide-in': 'slideIn 0.3s ease-out forwards',
+                    },
+                    keyframes: {
+                        slideIn: {
+                            '0%': { transform: 'translateY(-100%)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        @media (prefers-color-scheme: dark) {
+            ::-webkit-scrollbar-thumb { background: #475569; }
+        }
+        
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(10px);
+        }
+        @media (prefers-color-scheme: dark) {
+            .glass-panel {
+                background: rgba(30, 41, 59, 0.7);
+            }
+        }
+
+        .dropzone-active {
+            border-color: #10b981 !important;
+            background-color: rgba(16, 185, 129, 0.05) !important;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 dark:bg-slate-900 dark:text-slate-100 min-h-screen p-4 md:p-8 font-sans transition-colors duration-200">
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed top-6 right-6 z-50 flex flex-col gap-3"></div>
+
+    <div class="max-w-5xl mx-auto space-y-6">
+        
+        <!-- Header -->
+        <header class="flex items-center gap-4 mb-8">
+            <div class="w-12 h-12 rounded-xl bg-brand-500 text-white flex items-center justify-center shadow-lg shadow-brand-500/30">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path></svg>
+            </div>
+            <div>
+                <div class="flex items-center gap-3">
+                    <h1 class="text-2xl font-bold tracking-tight">CloudVaultX</h1>
+                    <span class="inline-block mt-1 px-3 py-1 text-xs font-semibold bg-brand-100 text-brand-700 dark:bg-brand-900/30 dark:text-brand-400 rounded-full">
+                        CloudVaultX v1.0
+                    </span>
+                </div>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Serverless Versioned Cloud Backup Platform</p>
+            </div>
+        </header>
+
+        <!-- Stats Grid -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                <p class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Total Files</p>
+                <p class="text-3xl font-bold text-slate-800 dark:text-white" id="s-files">0</p>
+            </div>
+            <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                <p class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Versions Stored</p>
+                <p class="text-3xl font-bold text-slate-800 dark:text-white" id="s-versions">0</p>
+            </div>
+            <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                <p class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Storage Used</p>
+                <p class="text-3xl font-bold text-slate-800 dark:text-white" id="s-storage">0 MB</p>
+            </div>
+            <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden">
+                <div class="absolute right-0 top-0 w-16 h-16 bg-brand-500/10 dark:bg-brand-500/20 rounded-bl-full flex items-center justify-center pl-4 pb-4">
+                    <button onclick="fetchFiles()" class="text-brand-600 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-300 transition-colors" title="Refresh Data">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                    </button>
+                </div>
+                <p class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Network Status</p>
+                <p class="text-xl font-bold text-brand-600 dark:text-brand-400 mt-2" id="s-status">Connecting...</p>
+            </div>
+        </div>
+
+        <!-- Main Workspace -->
+        <div class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden flex flex-col md:flex-row min-h-[600px]">
+            
+            <!-- Sidebar / Tabs -->
+            <div class="w-full md:w-64 bg-slate-50 dark:bg-slate-800/50 border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-700 p-4 flex flex-row md:flex-col gap-2 overflow-x-auto">
+                <button onclick="switchTab('upload')" class="tab-btn active w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left text-sm font-medium transition-all text-slate-600 hover:bg-slate-200/50 dark:text-slate-400 dark:hover:bg-slate-700/50 whitespace-nowrap">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                    Upload & Backup
+                </button>
+                <button onclick="switchTab('versions')" class="tab-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left text-sm font-medium transition-all text-slate-600 hover:bg-slate-200/50 dark:text-slate-400 dark:hover:bg-slate-700/50 whitespace-nowrap">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    Version History
+                </button>
+                <button onclick="switchTab('timeline')" class="tab-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left text-sm font-medium transition-all text-slate-600 hover:bg-slate-200/50 dark:text-slate-400 dark:hover:bg-slate-700/50 whitespace-nowrap">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    Timeline
+                </button>
+            </div>
+
+            <!-- Content Area -->
+            <div class="flex-1 p-6 overflow-y-auto">
+                
+                <!-- UPLOAD TAB -->
+                <div id="upload" class="tab-content block animate-slide-in">
+                    
+                    <div class="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-2xl p-8 text-center cursor-pointer transition-all hover:bg-slate-50 dark:hover:bg-slate-800/80 group"
+                         id="dropzone"
+                         onclick="document.getElementById('fileInput').click()"
+                         ondragover="event.preventDefault(); this.classList.add('dropzone-active')"
+                         ondragleave="this.classList.remove('dropzone-active')"
+                         ondrop="handleDrop(event)">
+                        
+                        <div class="w-16 h-16 bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-400 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
+                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                        </div>
+                        <h3 class="text-lg font-semibold text-slate-800 dark:text-white mb-1">Click to upload or drag & drop</h3>
+                        <p class="text-sm text-slate-500 dark:text-slate-400">Upload files securely to CloudVaultX with automatic version control and intelligent backup tracking.</p>
+                    </div>
+                    <label for="fileInput" class="sr-only">Choose a file to upload</label>
+                    <input type="file" id="fileInput" class="hidden" onchange="handleFiles(this.files)" aria-label="Choose a file to upload">
+
+                    <!-- Upload Progress -->
+                    <div id="upload-progress" class="hidden mt-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 shadow-sm">
+                        <div class="flex justify-between items-center mb-2">
+                            <span id="up-fname" class="text-sm font-medium truncate pr-4"></span>
+                            <span id="up-status" class="text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 whitespace-nowrap">Uploading...</span>
+                        </div>
+                        <div class="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-2">
+                            <div class="bg-brand-500 h-2 rounded-full transition-all duration-300 w-0" id="up-bar"></div>
+                        </div>
+                    </div>
+
+                    <!-- Duplicate Alert -->
+                    <div id="dup-alert" class="hidden mt-6 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50 rounded-xl p-4">
+                        <div class="flex items-start gap-4">
+                            <div class="text-amber-500 text-xl mt-0.5">⚠️</div>
+                            <div class="flex-1">
+                                <h4 class="text-sm font-semibold text-amber-800 dark:text-amber-400">Duplicate file detected</h4>
+                                <p id="dup-msg" class="text-sm text-amber-700 dark:text-amber-500/80 mt-1"></p>
+                                <div class="flex gap-3 mt-3">
+                                    <button class="px-3 py-1.5 text-xs font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors" onclick="skipDup()">Skip File</button>
+                                    <button class="px-3 py-1.5 text-xs font-medium bg-brand-600 hover:bg-brand-700 text-white rounded-lg shadow-sm transition-colors" onclick="addVersion()">Save as New Version</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- File List Header -->
+                    <div class="mt-8 mb-4 flex items-center justify-between">
+                        <h3 class="text-base font-semibold text-slate-800 dark:text-white">Backed-up Files</h3>
+                        <label for="sort-select" class="sr-only">Sort backed-up files</label>
+                        <select id="sort-select" onchange="renderFiles()" aria-label="Sort backed-up files" class="text-sm border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                            <option value="date">Sort by Date</option>
+                            <option value="name">Sort by Name</option>
+                            <option value="size">Sort by Size</option>
+                        </select>
+                    </div>
+
+                    <div id="file-list" class="space-y-3">
+                        <!-- Rendered files go here -->
+                        <div class="text-center py-8 text-slate-500 dark:text-slate-400 text-sm">Loading files...</div>
+                    </div>
+                </div>
+
+                <!-- VERSIONS TAB -->
+                <div id="versions" class="tab-content hidden animate-slide-in">
+                    <div class="flex flex-col md:flex-row gap-4 mb-6">
+                        <label for="ver-select" class="sr-only">Select a file to view versions</label>
+                        <select id="ver-select" onchange="renderVersions()" aria-label="Select a file to view versions" class="flex-1 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-500 shadow-sm">
+                        </select>
+                        <button class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-sm font-medium rounded-xl transition-colors flex items-center gap-2 shadow-sm" onclick="restoreLatest()">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path></svg>
+                            Restore Latest
+                        </button>
+                    </div>
+                    
+                    <div class="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-1">
+                        <div id="version-list" class="space-y-0">
+                            <!-- Rendered versions go here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TIMELINE TAB -->
+                <div id="timeline" class="tab-content hidden animate-slide-in">
+                    <div class="relative border-l border-slate-200 dark:border-slate-700 ml-4 md:ml-6 space-y-8 pb-4" id="timeline-view">
+                        <!-- Rendered timeline goes here -->
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* ── Configuration ── */
+        // Same-origin local API proxy. A small local server forwards these calls to Lambda.
+        const API_URL = "/api"; 
+
+        /* ── Styling Configuration ── */
+        // Adding active styles for custom tab buttons
+        document.head.insertAdjacentHTML('beforeend', `
+            <style>
+                .tab-btn.active {
+                    background-color: #10b981;
+                    color: white;
+                    box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.2);
+                }
+                .dark .tab-btn.active {
+                    background-color: #059669;
+                    color: white;
+                }
+                .tab-btn.active svg { color: white !important; }
+            </style>
+        `);
+
+        /* ── Data ── */
+        const EXT_COLORS = {
+            pdf: { text: 'text-red-600', bg: 'bg-red-100 dark:bg-red-900/30 dark:text-red-400', bar: 'bg-red-500' },
+            doc: { text: 'text-blue-600', bg: 'bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400', bar: 'bg-blue-500' },
+            docx: { text: 'text-blue-600', bg: 'bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400', bar: 'bg-blue-500' },
+            xls: { text: 'text-emerald-600', bg: 'bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400', bar: 'bg-emerald-500' },
+            xlsx: { text: 'text-emerald-600', bg: 'bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400', bar: 'bg-emerald-500' },
+            jpg: { text: 'text-amber-600', bg: 'bg-amber-100 dark:bg-amber-900/30 dark:text-amber-400', bar: 'bg-amber-500' },
+            png: { text: 'text-amber-600', bg: 'bg-amber-100 dark:bg-amber-900/30 dark:text-amber-400', bar: 'bg-amber-500' },
+            zip: { text: 'text-purple-600', bg: 'bg-purple-100 dark:bg-purple-900/30 dark:text-purple-400', bar: 'bg-purple-500' },
+            txt: { text: 'text-slate-600', bg: 'bg-slate-200 dark:bg-slate-700 dark:text-slate-300', bar: 'bg-slate-500' },
+            js: { text: 'text-yellow-600', bg: 'bg-yellow-100 dark:bg-yellow-900/30 dark:text-yellow-400', bar: 'bg-yellow-500' },
+            py: { text: 'text-green-600', bg: 'bg-green-100 dark:bg-green-900/30 dark:text-green-400', bar: 'bg-green-500' },
+            pptx: { text: 'text-orange-600', bg: 'bg-orange-100 dark:bg-orange-900/30 dark:text-orange-400', bar: 'bg-orange-500' },
+            default: { text: 'text-slate-600', bg: 'bg-slate-100 dark:bg-slate-800 dark:text-slate-400', bar: 'bg-slate-500' }
+        };
+
+        const LOCAL_MOCK_DATA = [
+            { id:1, name:'project_report.pdf', size:'2.4 MB', ext:'pdf',
+                versions:[
+                    {v:1,date:'2024-01-10',size:'2.1 MB',note:'Initial draft'},
+                    {v:2,date:'2024-02-03',size:'2.3 MB',note:'Added figures'},
+                    {v:3,date:'2024-03-15',size:'2.4 MB',note:'Final review'}
+                ], freq:14, lastBackup:'2024-03-15' },
+            { id:2, name:'budget_2024.xlsx', size:'840 KB', ext:'xlsx',
+                versions:[
+                    {v:1,date:'2024-01-01',size:'720 KB',note:'Q1 initial'},
+                    {v:2,date:'2024-04-01',size:'840 KB',note:'Q2 update'}
+                ], freq:7, lastBackup:'2024-04-01' },
+            { id:3, name:'presentation.pptx', size:'5.2 MB', ext:'pptx',
+                versions:[
+                    {v:1,date:'2024-02-20',size:'4.8 MB',note:'Draft slides'},
+                    {v:2,date:'2024-03-01',size:'5.2 MB',note:'Final version'}
+                ], freq:30, lastBackup:'2024-03-01' }
+        ];
+
+        let files = [];
+        let pendingDup = null;
+        let isLocalMode = false;
+        const FILE_CACHE_KEY = 'cloudvaultx.cachedFiles.v1';
+
+        /* ── Utility functions ── */
+        const getStyle = ext => EXT_COLORS[ext] || EXT_COLORS.default;
+        const fileLabel = ext => (ext || 'file').substring(0,3).toUpperCase();
+        const escapeHtml = value => String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+
+        function parseSizeInBytes(sizeStr) {
+            if (!sizeStr || sizeStr === '—') return 0;
+            const match = String(sizeStr).match(/([\d.]+)\s*(MB|KB|GB|B)/i);
+            if (!match) return parseFloat(sizeStr) || 0; // fallback if pure number
+            let val = parseFloat(match[1]);
+            const unit = match[2].toUpperCase();
+            if (unit === 'GB') val *= 1024 * 1024 * 1024;
+            else if (unit === 'MB') val *= 1024 * 1024;
+            else if (unit === 'KB') val *= 1024;
+            return val;
+        }
+
+        function normalizeFiles(rawFiles) {
+            return (Array.isArray(rawFiles) ? rawFiles : []).map(item => {
+                const versions = Array.isArray(item?.versions) ? item.versions.map((v, idx) => ({
+                    v: v?.v || idx + 1,
+                    date: v?.date || item?.lastBackup || '',
+                    size: v?.size || item?.size || '—',
+                    note: v?.note || 'Stored in S3',
+                    fileId: v?.fileId || ''
+                })) : [];
+
+                return {
+                    id: item?.id || item?.name || '',
+                    name: item?.name || item?.id || 'Unknown file',
+                    size: item?.size || (versions[versions.length - 1]?.size || '—'),
+                    ext: item?.ext || ((item?.name || '').includes('.') ? item.name.split('.').pop().toLowerCase() : ''),
+                    lastBackup: item?.lastBackup || (versions[versions.length - 1]?.date || ''),
+                    versions
+                };
+            });
+        }
+
+        function formatBytesToLabel(bytes) {
+            if (!bytes || bytes <= 0) return '0 B';
+            if (bytes < 1024) return `${bytes} B`;
+            if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(2)} KB`;
+            return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+        }
+
+        function upsertUploadedFile(fileName, fileId, byteSize) {
+            const safeName = String(fileName || 'Unknown file');
+            const prettySize = formatBytesToLabel(byteSize || 0);
+            const today = new Date().toISOString().slice(0, 10);
+            const ext = safeName.includes('.') ? safeName.split('.').pop().toLowerCase() : '';
+
+            const version = {
+                v: 1,
+                date: today,
+                size: prettySize,
+                note: 'Stored in S3',
+                fileId: fileId || ''
+            };
+
+            const existing = files.find(x => String(x.id) === safeName || String(x.name) === safeName);
+            if (existing) {
+                existing.versions = Array.isArray(existing.versions) ? existing.versions : [];
+                existing.versions.push({ ...version, v: existing.versions.length + 1 });
+                existing.lastBackup = today;
+                existing.size = prettySize;
+            } else {
+                files.unshift({
+                    id: safeName,
+                    name: safeName,
+                    size: prettySize,
+                    ext,
+                    lastBackup: today,
+                    versions: [version]
+                });
+            }
+
+            saveCachedFiles();
+            renderFiles();
+        }
+
+        function saveCachedFiles() {
+            try {
+                localStorage.setItem(FILE_CACHE_KEY, JSON.stringify(files));
+            } catch (_) {
+                // Ignore storage failures.
+            }
+        }
+
+        function loadCachedFiles() {
+            try {
+                const cached = localStorage.getItem(FILE_CACHE_KEY);
+                return cached ? normalizeFiles(JSON.parse(cached)) : [];
+            } catch (_) {
+                return [];
+            }
+        }
+
+        function calculateTotalStorage() {
+            let totalBytes = 0;
+            files.forEach(f => {
+                (Array.isArray(f.versions) ? f.versions : []).forEach(v => {
+                    totalBytes += parseSizeInBytes(v.size);
+                });
+            });
+            if (totalBytes > 1024 * 1024) return (totalBytes / (1024 * 1024)).toFixed(1) + ' MB';
+            if (totalBytes > 1024) return (totalBytes / 1024).toFixed(1) + ' KB';
+            return totalBytes + ' B';
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            const baseClass = "flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg border text-sm font-medium transition-all duration-300 animate-slide-in";
+            const typeClass = type === 'success' 
+                ? "bg-white border-emerald-200 text-slate-800 dark:bg-slate-800 dark:border-emerald-800 dark:text-slate-100 shadow-emerald-500/10" 
+                : "bg-white border-amber-200 text-slate-800 dark:bg-slate-800 dark:border-amber-800 dark:text-slate-100 shadow-amber-500/10";
+            
+            const icon = type === 'success'
+                ? `<div class="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400 flex items-center justify-center shrink-0"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></div>`
+                : `<div class="w-8 h-8 rounded-full bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400 flex items-center justify-center shrink-0"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>`;
+
+            toast.className = `${baseClass} ${typeClass}`;
+            toast.innerHTML = `
+                ${icon}
+                <div class="flex-1">${escapeHtml(message)}</div>
+                <button class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 focus:outline-none" onclick="this.parentElement.remove()">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            `;
+            
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(-10px)';
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
+
+        /* ── API Integration ── */
+
+        function fetchListPayloadViaXhr() {
+            return new Promise((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+                xhr.open('GET', `${API_URL}?action=list&t=${Date.now()}`, true);
+                xhr.setRequestHeader('Accept', 'application/json');
+
+                xhr.onload = () => {
+                    let data = {};
+                    try {
+                        data = xhr.responseText ? JSON.parse(xhr.responseText) : {};
+                    } catch (_) {
+                        reject(new Error(`List parse failed (${xhr.status || 'xhr'})`));
+                        return;
+                    }
+
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        resolve(data);
+                    } else {
+                        reject(new Error(data.message || data.error || `List failed (${xhr.status || 'xhr'})`));
+                    }
+                };
+
+                xhr.onerror = () => reject(new Error('XHR network error'));
+                xhr.ontimeout = () => reject(new Error('XHR timeout'));
+                xhr.timeout = 12000;
+                xhr.send();
+            });
+        }
+
+        async function fetchListPayload() {
+            let response;
+            try {
+                response = await fetch(`${API_URL}?action=list&t=${Date.now()}`);
+            } catch (fetchError) {
+                // Some browser/network policies block fetch while XHR still succeeds.
+                if (/Failed to fetch/i.test(String(fetchError?.message || ''))) {
+                    return fetchListPayloadViaXhr();
+                }
+                throw fetchError;
+            }
+
+            const rawText = await response.text();
+            let data = {};
+            try {
+                data = rawText ? JSON.parse(rawText) : {};
+            } catch (_) {
+                throw new Error(`List parse failed (${response.status})`);
+            }
+
+            if (!response.ok) {
+                throw new Error(data.message || data.error || `List failed (${response.status})`);
+            }
+
+            return data;
+        }
+
+        // Fetch files from AWS Lambda
+        async function fetchFiles() {
+            const statusEl = document.getElementById('s-status');
+            statusEl.textContent = 'Syncing...';
+            statusEl.className = 'text-xl font-bold text-amber-600 dark:text-amber-400 mt-2';
+
+            let data = null;
+            let lastError = null;
+
+            for (let attempt = 1; attempt <= 2; attempt++) {
+                try {
+                    data = await fetchListPayload();
+                    break;
+                } catch (error) {
+                    lastError = error;
+                    if (attempt < 2) {
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                    }
+                }
+            }
+
+            if (!data) {
+                console.error('Error fetching files:', lastError);
+                showToast(`Failed to sync list (${lastError?.message || 'network error'}).`, 'error');
+                if (files.length > 0) {
+                    statusEl.textContent = 'Connected (cached)';
+                    statusEl.className = 'text-xl font-bold text-amber-600 dark:text-amber-400 mt-2';
+                    // Ensure list view re-renders cached entries instead of stale loading placeholder.
+                    renderFiles();
+                } else {
+                    statusEl.textContent = 'Connected (local)';
+                    statusEl.className = 'text-xl font-bold text-amber-600 dark:text-amber-400 mt-2';
+                    document.getElementById('file-list').innerHTML = `<div class="text-center py-8 text-slate-500 dark:text-slate-400 text-sm">No files loaded yet. Upload a file to build the local view.</div>`;
+                    document.getElementById('s-files').textContent = '0';
+                    document.getElementById('s-versions').textContent = '0';
+                    document.getElementById('s-storage').textContent = '0 B';
+                }
+                return;
+            }
+
+            const normalized = normalizeFiles(data.files);
+
+            try {
+                isLocalMode = false;
+                files = normalized;
+                    saveCachedFiles();
+                renderFiles();
+                statusEl.textContent = 'Connected (AWS)';
+                statusEl.className = 'text-xl font-bold text-brand-600 dark:text-brand-400 mt-2';
+            } catch (renderError) {
+                console.error('Render error:', renderError);
+                statusEl.textContent = 'Connected (AWS)';
+                statusEl.className = 'text-xl font-bold text-brand-600 dark:text-brand-400 mt-2';
+                showToast(`Connected, but list render failed: ${renderError.message}`, 'error');
+            }
+        }
+
+        // Convert File to Base64 for Lambda payload
+        function getBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => {
+                    // Extract base64 string without data URL prefix
+                    resolve(reader.result.split(',')[1]);
+                };
+                reader.onerror = error => reject(error);
+            });
+        }
+
+        // Upload to AWS Lambda
+        async function uploadToServer(fileToUpload) {
+            const pd = document.getElementById('upload-progress');
+            pd.classList.remove('hidden');
+            document.getElementById('dup-alert').classList.add('hidden');
+            document.getElementById('up-fname').textContent = fileToUpload.name;
+            
+            const statusSpan = document.getElementById('up-status');
+            statusSpan.textContent = 'Uploading to S3...';
+            statusSpan.className = 'text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 whitespace-nowrap';
+            
+            const bar = document.getElementById('up-bar');
+            
+            // Start fake progress animation for UX while base64/fetch happens
+            let p = 0; bar.style.width = '0%';
+            const progressInterval = setInterval(() => {
+                p = Math.min(85, p + Math.random() * 15 + 5);
+                bar.style.width = Math.round(p) + '%';
+            }, 200);
+
+            try {
+                const base64Data = await getBase64(fileToUpload);
+                const payload = {
+                    fileName: fileToUpload.name,
+                    fileData: base64Data
+                };
+
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    let errData = {};
+                    try {
+                        errData = await response.json();
+                    } catch (_) {
+                        errData = {};
+                    }
+                    throw new Error(errData.message || errData.error || `Upload failed (${response.status})`);
+                }
+
+                let successData = {};
+                try {
+                    successData = await response.json();
+                } catch (_) {
+                    successData = {};
+                }
+
+                clearInterval(progressInterval);
+                bar.style.width = '100%';
+
+                statusSpan.textContent = 'Backed up ✓';
+                statusSpan.className = 'text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 whitespace-nowrap';
+
+                // Show success feedback immediately and keep network status visibly up to date.
+                const statusText = document.getElementById('s-status');
+                statusText.textContent = 'Upload successful';
+                statusText.className = 'text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-2';
+                showToast(successData.message || `Successfully backed up ${fileToUpload.name}`);
+
+                // Optimistically reflect upload in UI even if list sync is blocked by browser network policy.
+                upsertUploadedFile(fileToUpload.name, successData.file_id, fileToUpload.size);
+                const fileInput = document.getElementById('fileInput');
+                if (fileInput) fileInput.value = '';
+                
+                setTimeout(async () => {
+                    pd.classList.add('hidden');
+                    bar.style.width = '0%';
+                    await fetchFiles();
+                }, 1000);
+
+            } catch (error) {
+                clearInterval(progressInterval);
+                console.error("Upload error:", error);
+                statusSpan.textContent = 'Failed ✖';
+                statusSpan.className = 'text-xs font-semibold px-2.5 py-1 rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 whitespace-nowrap';
+                showToast(error.message || 'Error uploading file', 'error');
+                
+                setTimeout(() => { pd.classList.add('hidden'); }, 2000);
+            }
+        }
+
+        // Delete from AWS Lambda
+        async function deleteFile(fileId) {
+            if(!confirm(`Are you sure you want to delete ${fileId} and all its versions?`)) return;
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST', // using POST for safety with fetch as per lambda logic
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'delete', fileName: fileId })
+                });
+
+                if (!response.ok) throw new Error('Delete failed');
+                
+                showToast(`Deleted ${fileId} from cloud`);
+                fetchFiles(); // Refresh UI
+            } catch(err) {
+                console.error("Delete error:", err);
+                showToast(`Failed to delete file`, 'error');
+            }
+        }
+
+
+        /* ── Tab switching ── */
+        function switchTab(t) {
+            document.querySelectorAll('.tab-btn').forEach((b, i) => {
+                b.classList.toggle('active', ['upload','versions','timeline'][i] === t);
+            });
+            document.querySelectorAll('.tab-content').forEach(s => s.classList.add('hidden'));
+            document.getElementById(t).classList.remove('hidden');
+            
+            if (t === 'versions') populateVerSelect();
+            if (t === 'timeline') renderTimeline();
+        }
+
+        /* ── Render file list ── */
+        function renderFiles() {
+            const sort = document.getElementById('sort-select').value;
+            let sorted = [...files];
+            if (sort === 'name') sorted.sort((a,b) => a.name.localeCompare(b.name));
+            if (sort === 'date') sorted.sort((a,b) => (b.lastBackup||'').localeCompare(a.lastBackup||''));
+            if (sort === 'size') sorted.sort((a,b) => parseSizeInBytes(b.size) - parseSizeInBytes(a.size));
+
+            if(sorted.length === 0) {
+                document.getElementById('file-list').innerHTML = `<div class="text-center py-8 text-slate-500 dark:text-slate-400 text-sm">No files uploaded yet. Start backing up!</div>`;
+            } else {
+                document.getElementById('file-list').innerHTML = sorted.map(f => {
+                    const style = getStyle(f.ext);
+                    const safeName = escapeHtml(f.name);
+                    const safeSize = escapeHtml(f.size);
+                    const safeLastBackup = escapeHtml(f.lastBackup || '—');
+                    const latestFileId = f.versions[f.versions.length - 1]?.fileId || '';
+                    const encodedLatestFileId = encodeURIComponent(String(latestFileId));
+                    const encodedFileName = encodeURIComponent(String(f.id));
+                    
+                    return `
+                    <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4 rounded-xl flex items-center gap-4 hover:shadow-md transition-shadow group relative overflow-hidden">
+                        <div class="absolute bottom-0 left-0 h-1 ${style.bar}" style="width: ${Math.min(100, f.versions.length * 15)}%"></div>
+                        <div class="w-12 h-12 rounded-lg flex flex-col items-center justify-center shrink-0 ${style.bg}">
+                            <span class="text-xs font-bold tracking-tight ${style.text}">${fileLabel(f.ext)}</span>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2 mb-1">
+                                <h4 class="text-sm font-semibold text-slate-800 dark:text-white truncate">${safeName}</h4>
+                            </div>
+                            <p class="text-xs text-slate-500 dark:text-slate-400 truncate">
+                                ${safeSize} • ${f.versions.length} version${f.versions.length>1?'s':''} • Last: ${safeLastBackup}
+                            </p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button class="w-8 h-8 rounded-lg bg-slate-50 dark:bg-slate-700 text-slate-400 dark:text-slate-300 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-900/30 transition-colors flex items-center justify-center shrink-0" data-action="restore-latest" data-file-id="${encodedLatestFileId}" data-file-name="${encodedFileName}" title="Restore latest version">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path></svg>
+                            </button>
+                            <button class="w-8 h-8 rounded-lg bg-slate-50 dark:bg-slate-700 text-slate-400 dark:text-slate-300 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors flex items-center justify-center shrink-0" data-action="delete-file" data-file-name="${encodedFileName}" title="Delete file">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+                `}).join('');
+
+                const listEl = document.getElementById('file-list');
+                listEl.querySelectorAll('button[data-action="restore-latest"]').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const fileId = decodeURIComponent(btn.dataset.fileId || '');
+                        const fileName = decodeURIComponent(btn.dataset.fileName || '');
+                        restoreVersion(fileId, fileName);
+                    });
+                });
+                listEl.querySelectorAll('button[data-action="delete-file"]').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const fileName = decodeURIComponent(btn.dataset.fileName || '');
+                        deleteFile(fileName);
+                    });
+                });
+            }
+
+            // Update stats
+            document.getElementById('s-files').textContent = files.length;
+            document.getElementById('s-versions').textContent = files.reduce((a,f) => a + (Array.isArray(f.versions) ? f.versions.length : 0), 0);
+            document.getElementById('s-storage').textContent = calculateTotalStorage();
+        }
+
+        /* ── Version select ── */
+        function populateVerSelect() {
+            const sel = document.getElementById('ver-select');
+            if(files.length === 0) {
+                sel.innerHTML = '<option value="">No files available</option>';
+            } else {
+                sel.innerHTML = files.map(f => `<option value="${escapeHtml(f.id)}">${escapeHtml(f.name)}</option>`).join('');
+            }
+            renderVersions();
+        }
+
+        function renderVersions() {
+            const fid = document.getElementById('ver-select').value;
+            const f = files.find(x => String(x.id) === String(fid));
+            
+            if (!f) {
+                document.getElementById('version-list').innerHTML = '';
+                return;
+            }
+
+            document.getElementById('version-list').innerHTML = [...f.versions].reverse().map((v, i) => {
+                const safeDate = escapeHtml(v.date || '—');
+                const safeNote = escapeHtml(v.note || 'No note');
+                const safeSize = escapeHtml(v.size || '—');
+                const encodedFileId = encodeURIComponent(String(v.fileId || ''));
+                const encodedFileName = encodeURIComponent(String(f.id));
+
+                return `
+                <div class="flex gap-4 p-4 ${i !== f.versions.length - 1 ? 'border-b border-slate-200 dark:border-slate-700/50' : ''} hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-colors rounded-xl group">
+                    <div class="flex flex-col items-center py-1">
+                        <div class="w-3 h-3 rounded-full ${i === 0 ? 'bg-brand-500 ring-4 ring-brand-100 dark:ring-brand-900/30' : 'bg-slate-300 dark:bg-slate-600'}"></div>
+                        ${i !== f.versions.length - 1 ? '<div class="flex-1 w-0.5 bg-slate-200 dark:bg-slate-700 my-2"></div>' : ''}
+                    </div>
+                    <div class="flex-1 pb-1">
+                        <div class="flex items-center justify-between mb-1">
+                            <div class="flex items-center gap-2">
+                                <span class="text-sm font-bold text-slate-800 dark:text-white">Version ${v.v}</span>
+                                ${i === 0 ? '<span class="px-2 py-0.5 bg-brand-100 text-brand-700 dark:bg-brand-900/30 dark:text-brand-400 text-[10px] font-bold rounded uppercase tracking-wide">Current</span>' : ''}
+                            </div>
+                            <span class="text-xs text-slate-500 dark:text-slate-400 font-medium">${safeDate}</span>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-y-2 justify-between mt-2">
+                            <span class="text-sm text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700/50 inline-flex items-center gap-2 shadow-sm">
+                                <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                                ${safeNote}
+                            </span>
+                            <div class="flex items-center gap-3">
+                                <span class="text-xs font-mono text-slate-500 dark:text-slate-400 px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded">${safeSize}</span>
+                                ${i > 0 ? `<button class="text-xs font-medium text-brand-600 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-300 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1" data-action="restore-version" data-file-id="${encodedFileId}" data-file-name="${encodedFileName}"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path></svg> Restore</button>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            }).join('');
+
+            const versionList = document.getElementById('version-list');
+            versionList.querySelectorAll('button[data-action="restore-version"]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const fileId = decodeURIComponent(btn.dataset.fileId || '');
+                    const fileName = decodeURIComponent(btn.dataset.fileName || '');
+                    restoreVersion(fileId, fileName);
+                });
+            });
+        }
+
+        /* ── Timeline ── */
+        function renderTimeline() {
+            const all = [];
+            files.forEach(f => f.versions.forEach(v => all.push({date:v.date, file:f.name, ext:f.ext, note:v.note, ver:v.v, size:v.size})));
+            all.sort((a,b) => (b.date||'').localeCompare(a.date||''));
+
+            if(all.length === 0) {
+                 document.getElementById('timeline-view').innerHTML = `<div class="text-center py-8 text-slate-500 dark:text-slate-400 text-sm">No activity history yet.</div>`;
+                 return;
+            }
+
+            const byDate = {};
+            all.forEach(e => {
+                const dateKey = e.date || 'Unknown date';
+                if (!byDate[dateKey]) byDate[dateKey] = [];
+                byDate[dateKey].push(e);
+            });
+
+            document.getElementById('timeline-view').innerHTML = Object.entries(byDate).map(([date, evs]) => `
+                <div class="relative">
+                    <span class="absolute -left-12 md:-left-[4.5rem] top-1 text-xs font-medium text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800 px-1 py-0.5 rounded shadow-sm border border-slate-200 dark:border-slate-700">${escapeHtml(date === 'Unknown date' ? date : String(date).substring(5))}</span>
+                    <div class="absolute -left-[5px] top-2.5 w-2.5 h-2.5 rounded-full bg-brand-500 ring-4 ring-white dark:ring-slate-800"></div>
+                    
+                    <div class="bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl p-4 shadow-sm space-y-3">
+                        ${evs.map((e, idx) => {
+                            const style = getStyle(e.ext);
+                            const safeFile = escapeHtml(e.file || 'Unknown file');
+                            const safeSize = escapeHtml(e.size || '—');
+                            const safeNote = escapeHtml(e.note || 'No note');
+                            return `
+                            <div class="${idx !== 0 ? 'border-t border-slate-100 dark:border-slate-700/50 pt-3' : ''} flex items-start gap-3">
+                                <div class="w-8 h-8 rounded shrink-0 flex items-center justify-center ${style.bg}">
+                                    <span class="text-[9px] font-bold ${style.text}">${fileLabel(e.ext)}</span>
+                                </div>
+                                <div>
+                                    <h4 class="text-sm font-semibold text-slate-800 dark:text-white leading-tight">${safeFile}</h4>
+                                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1.5 flex-wrap">
+                                        <span class="inline-block w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600"></span> v${e.ver} 
+                                        <span class="inline-block w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600"></span> ${safeSize}
+                                        <span class="inline-block w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600"></span> ${safeNote}
+                                    </p>
+                                </div>
+                            </div>
+                        `}).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        /* ── Upload handling ── */
+        function handleFiles(fileList) {
+            const f = fileList[0];
+            if (!f) return;
+            const fileInput = document.getElementById('fileInput');
+            if (fileInput) fileInput.value = '';
+            const dup = files.find(x => x.name === f.name);
+            if (dup) {
+                pendingDup = { file: f, existing: dup };
+                document.getElementById('dup-msg').textContent = `"${f.name}" already exists. It currently has ${dup.versions.length} version(s).`;
+                document.getElementById('dup-alert').classList.remove('hidden');
+                document.getElementById('upload-progress').classList.add('hidden');
+                return;
+            }
+            uploadToServer(f);
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            document.getElementById('dropzone').classList.remove('dropzone-active');
+            handleFiles(e.dataTransfer.files);
+        }
+
+        function addVersion() {
+            if (!pendingDup) return;
+            const f = pendingDup.file; // use actual file payload for the new version upload
+            
+            document.getElementById('dup-alert').classList.add('hidden');
+            const fileInput = document.getElementById('fileInput');
+            if (fileInput) fileInput.value = '';
+            uploadToServer(f);
+            
+            pendingDup = null;
+        }
+
+        function skipDup() {
+            document.getElementById('dup-alert').classList.add('hidden');
+            pendingDup = null;
+            document.getElementById('fileInput').value = '';
+        }
+
+        async function restoreVersion(fileId, fileName) {
+            if (!fileId) {
+                showToast('No restorable version found for this file.', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'restore', fileId, fileName })
+                });
+
+                if (!response.ok) {
+                    let errData = {};
+                    try {
+                        errData = await response.json();
+                    } catch (_) {
+                        errData = {};
+                    }
+                    throw new Error(errData.message || errData.error || `Restore failed (${response.status})`);
+                }
+
+                const result = await response.json();
+                showToast(result.message || `Restored "${fileName}" successfully`);
+                await fetchFiles();
+                populateVerSelect();
+            } catch (err) {
+                console.error('Restore error:', err);
+                showToast(err.message || 'Failed to restore file', 'error');
+            }
+        }
+
+        function restoreLatest() {
+            const fid = document.getElementById('ver-select').value;
+            const f = files.find(x => String(x.id) === String(fid));
+            if (!f || !f.versions.length) return;
+            const latest = f.versions[f.versions.length - 1];
+            restoreVersion(latest.fileId, f.id);
+        }
+
+        /* ── Init ── */
+        // Load cached files immediately, then sync live data in the background.
+        files = loadCachedFiles();
+        if (files.length > 0) {
+            renderFiles();
+            document.getElementById('s-status').textContent = 'Connected (cached)';
+            document.getElementById('s-status').className = 'text-xl font-bold text-amber-600 dark:text-amber-400 mt-2';
+        }
+
+        // Automatically fetch files on page load
+        fetchFiles();
+    </script>
+</body>
+</html>

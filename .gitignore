@@ -1,0 +1,17 @@
+node_modules
+__pycache__
+*.pyc
+.env
+.env.local
+.DS_Store
+restored_testfile.txt
+testfile.txt
+backup_client.py
+restore_file.py
+timeline_viewer.py
+index1.html
+index2.html
+lambda_function.txt
+proxy_server.py
+restored_testfile.txt
+restore_file.py

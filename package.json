@@ -1,0 +1,9 @@
+{
+  "name": "cloudvaultx",
+  "version": "1.0.0",
+  "description": "SmartBackupSystem",
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel"
+  }
+}

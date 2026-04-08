@@ -1,0 +1,3 @@
+# Netlify proxy for CloudVaultX API calls
+/api https://uoizku3cbwixvtrnwldz7g5xvq0owbrt.lambda-url.ap-south-1.on.aws/ 200
+/api/* https://uoizku3cbwixvtrnwldz7g5xvq0owbrt.lambda-url.ap-south-1.on.aws/:splat 200
